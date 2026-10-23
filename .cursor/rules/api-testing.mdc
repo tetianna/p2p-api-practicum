@@ -1,0 +1,79 @@
+---
+description: How we test the P2P API — the docs are the oracle, black-box only, own data per test, positive/negative/error per endpoint, schema checks, one tag, evidence labels.
+globs: tests/**
+alwaysApply: false
+---
+
+# P2P API testing
+
+## 1. Oracle
+
+`docs/API.md` and `/openapi.json` say what is right. When the API disagrees, the test keeps the documented expectation and fails — never change the expectation to match the API; report it. What neither document says is in `docs/QUESTIONS.md` as assumed: don't assert it until a human answers.
+
+✅ **Good** — API.md says inactive vendor → rule `inactive_vendor_gate`; test expects that rule on `POST /purchase-orders` for `vnd-002`.
+
+❌ **Bad** — API returns `400` with `rule: "workflow_gate"` for inactive vendor; test is changed to expect `workflow_gate` so CI passes.
+
+## 2. Black box
+
+Never read or change `src/`.
+
+✅ **Good** — Read `docs/API.md` and fetch OpenAPI; write `tests/api/vendors.spec.ts` only.
+
+❌ **Bad** — Open `src/rules.ts` to see which rule name the server returns, then assert that name.
+
+## 3. Requests
+
+Playwright's `request` fixture with paths only (`request.get('/vendors')`); the host comes from `baseURL`. Never a hard-coded URL.
+
+✅ **Good** — `await request.get('/vendors')` with `baseURL` from `API_BASE_URL` / `playwright.config.ts`.
+
+❌ **Bad** — `await request.get('http://localhost:8002/vendors')`.
+
+## 4. Data
+
+Every test creates what it needs — its own vendor when it checks exposure, unique invoice numbers with `Date.now()`. Never call `/admin/reset` in a test. Never depend on another test's data, except inside one serial flow.
+
+✅ **Good** — `POST /vendors` then `GET /vendors/{id}/exposure` in the same test; `invoice_number: \`INV-${Date.now()}\``.
+
+❌ **Bad** — `await request.post('/admin/reset')` at the top of `vendors.spec.ts`, or assume `vnd-001` exposure from a prior file.
+
+## 5. Per endpoint
+
+Positive (it works), negative (one invalid input, one change at a time → `400` `validation_error` or the business rule), errors (unknown id → `404`).
+
+✅ **Good** — `GET /purchase-orders/po-unknown` → `404`; `POST /purchase-orders` with `quantity: 0` only → `400` `validation_error`.
+
+❌ **Bad** — Only happy-path `GET /health`; or negative case that drops auth and sends bad body and wrong vendor in one request.
+
+## 6. Assertions
+
+The status; for every `400`, the exact `rule`; the values that matter, not only that a field exists; the shape, with `expectSchema` (P48). A `400` with the wrong rule is a failed test.
+
+✅ **Good** — `expect(body.rule).toBe('inactive_vendor_gate')`; `expectSchema(response, 'Vendor')` on `201` create.
+
+❌ **Bad** — `expect(response.status()).toBe(400)` only; or accept any `rule` on a business-rule failure.
+
+## 7. Tags
+
+Exactly one per test, `{ tag: '@api' }` for one endpoint or `{ tag: '@e2e' }` for a flow; on `test()`, never on `describe()`.
+
+✅ **Good** — `test('POST /vendors creates vendor', { tag: '@api' }, async ({ request }) => { … })`.
+
+❌ **Bad** — `test.describe('Vendors @api', () => { … })` or `test('…', { tag: ['@api', '@regression'] }, …)`.
+
+## 8. Known bugs
+
+A test for a confirmed bug keeps its assertions and gets `test.fail(true, 'BUG-<n>: <one line>')` — never deleted, never loosened.
+
+✅ **Good** — Documented expectation stays; `test.fail(true, 'BUG-3: inactive vendor returns wrong rule')` until fixed.
+
+❌ **Bad** — Remove the failing case or change expected `rule` to match broken behavior.
+
+## 9. Evidence labels
+
+Label why each assertion is allowed: **documented** (`API.md` / OpenAPI), **executed** (you observed it in a run), or **assumed until answered** (`docs/QUESTIONS.md` only — no assertion).
+
+✅ **Good** — Comment: `// API.md Errors — 404 has no rule`; skip asserting fractional quantities (listed as assumed in QUESTIONS.md).
+
+❌ **Bad** — Assert pagination or idempotency because "the API probably does X" with no doc or answered question.
