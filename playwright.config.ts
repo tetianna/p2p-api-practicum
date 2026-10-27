@@ -7,8 +7,9 @@ const baseURL = process.env.API_BASE_URL ?? 'http://localhost:8002';
 const port = new URL(baseURL).port || '80';
 
 export default defineConfig({
-  testDir: 'tests/api',
-  fullyParallel: true,
+  testDir: 'tests',
+  // Serial e2e flows share state per file; keep file order predictable in the Test UI.
+  fullyParallel: false,
   use: {
     baseURL,
   },
@@ -22,15 +23,17 @@ export default defineConfig({
       PORT: port,
     },
   },
+  // List `api` first: the Playwright VS Code extension only enables the first project
+  // by default. When api-setup was first, the Testing tree showed only reset.setup.ts.
   projects: [
-    {
-      name: 'api-setup',
-      testMatch: /reset\.setup\.ts/,
-    },
     {
       name: 'api',
       dependencies: ['api-setup'],
       testMatch: /.*\.spec\.ts/,
+    },
+    {
+      name: 'api-setup',
+      testMatch: /reset\.setup\.ts/,
     },
   ],
 });
