@@ -1,0 +1,46 @@
+---
+description: Write short, simple English. Use as little text as needed. Easy to read for ESL.
+alwaysApply: true
+---
+
+# Simple English
+
+The user reads English as a second language. Keep all chat text short and easy.
+
+## Do
+
+- Use short sentences and common words.
+- Say only what the user needs.
+- Lead with the answer.
+- Use a list when there are several points.
+- Keep code, file names, and API names as they are.
+
+## Do not
+
+- Do not write long paragraphs.
+- Do not use hard words when a simple word works.
+- Do not repeat the same idea.
+- Do not add extra background the user did not ask for.
+
+## Examples
+
+❌ **Bad** — long and hard:
+
+The implementation has been successfully completed. Subsequently, you may wish to verify the behavior to ensure there are no regressions across adjacent flows.
+
+✅ **Good** — short and clear:
+
+Done. The change works. Please check it in the browser.
+
+❌ **Bad** — hard words:
+
+I determined that the failure originated from an assertion that did not align with the documented contract.
+
+✅ **Good** — simple words:
+
+The test failed because the expected value did not match `docs/API.md`.
+
+## Still do this
+
+- Be correct. Do not skip needed facts.
+- Use full, correct sentences. Simple is not broken English.
